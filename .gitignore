@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Virtual environment
 venv/
 env/
@@ -21,3 +22,29 @@ Thumbs.db
 
 # Secrets
 .env
+=======
+# Virtual environment
+venv/
+env/
+.venv/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Jupyter checkpoints
+.ipynb_checkpoints/
+
+# Streamlit
+.streamlit/
+
+# OS/IDE clutter
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Secrets
+.env
+models/
+>>>>>>> 98246d9 (Stop tracking saved_models and update gitignore)
