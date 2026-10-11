@@ -1,4 +1,4 @@
-"""Trains the AND / OR perceptrons and saves them in models/."""
+"""Trains the AND / OR / NAND / NOR perceptrons and saves them in models/."""
 
 import os
 import json
@@ -11,9 +11,11 @@ MODELS_DIR = "models"
 os.makedirs(MODELS_DIR, exist_ok=True)
 
 # ---------------------------------------------------------------------------
-# Truth tables for the two gates this project supports (AND / OR).
+# Truth tables for the gates this project supports (AND / OR / NAND / NOR).
+# XOR is deliberately left out: it is not linearly separable, so a
+# single-layer perceptron cannot learn it (see the note in the app).
 # Same 4-row datasets used in the lab, just organised in a dictionary so we
-# can loop over both gates instead of copy-pasting the training loop twice.
+# can loop over all gates instead of copy-pasting the training loop twice.
 # ---------------------------------------------------------------------------
 GATES = {
     "AND": {
@@ -44,6 +46,34 @@ GATES = {
             [1.]
         ]),
     },
+    "NAND": {
+        "x": torch.tensor([
+            [0., 0.],
+            [0., 1.],
+            [1., 0.],
+            [1., 1.]
+        ]),
+        "y": torch.tensor([
+            [1.],
+            [1.],
+            [1.],
+            [0.]
+        ]),
+    },
+    "NOR": {
+        "x": torch.tensor([
+            [0., 0.],
+            [0., 1.],
+            [1., 0.],
+            [1., 1.]
+        ]),
+        "y": torch.tensor([
+            [1.],
+            [0.],
+            [0.],
+            [0.]
+        ]),
+    },
 }
 
 
@@ -51,7 +81,7 @@ def train_and_save(gate_name, x, y, epochs=1000, lr=0.5):
     """
     Trains a single-layer perceptron on one gate's truth table and saves
     the result. This is exactly the training loop from the lab notebook,
-    just wrapped in a function so it can be reused for AND and OR.
+    just wrapped in a function so it can be reused for every gate.
     """
 
     # Fixed seed so every run (and every deployment) learns the same weights
