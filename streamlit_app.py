@@ -3,7 +3,7 @@ Mini Project 12: Binary Pattern Classifier - Streamlit Interface
 
 Loads the perceptron models trained by perceptron_train.py (saved in the
 models/ folder as .pt weights + _meta.json files) and lets the user pick
-a gate (AND / OR), enter two binary inputs, and see the predicted class,
+a gate (AND / OR / NAND / NOR), enter two binary inputs, and see the predicted class,
 raw sigmoid probability, and the learned weights/bias.
 """
 
@@ -13,7 +13,7 @@ import torch
 import torch.nn as nn
 import streamlit as st
 
-MODELS_DIR = "models"
+from perceptron_train import GATES, MODELS_DIR, train_and_save
 
 
 def build_model():
@@ -27,11 +27,21 @@ def build_model():
 @st.cache_resource
 def load_gate(gate_name):
     """
-    Loads the trained weights + metadata for a given gate ('AND' or 'OR').
+    Loads the trained weights + metadata for a given gate ('AND', 'OR', 'NAND' or 'NOR').
     Cached so the model isn't reloaded from disk on every interaction.
     """
     weights_path = os.path.join(MODELS_DIR, f"perceptron_{gate_name}.pt")
     meta_path = os.path.join(MODELS_DIR, f"perceptron_{gate_name}_meta.json")
+
+    # If the saved files are missing (e.g. models/ was not pushed to GitHub),
+    # train the gate now. It is a 4-row truth table, so this takes < 1 second.
+    if not (os.path.exists(weights_path) and os.path.exists(meta_path)):
+        model, meta = train_and_save(
+            gate_name, GATES[gate_name]["x"], GATES[gate_name]["y"],
+            epochs=1000, lr=0.5,
+        )
+        model.eval()
+        return model, meta
 
     model = build_model()
     model.load_state_dict(torch.load(weights_path, map_location="cpu"))
@@ -181,7 +191,15 @@ st.write(
     "Pick a gate, choose two binary inputs, and predict the output."
 )
 
-gate_choice = st.selectbox("Choose a logic gate:", ["AND", "OR"])
+gate_choice = st.selectbox("Choose a logic gate:", list(GATES))
+
+st.info(
+    "**Why no XOR?** A single-layer perceptron can't learn XOR, because XOR "
+    "isn't linearly separable: no single straight line can split the inputs "
+    "(0,0) and (1,1) from (0,1) and (1,0). AND, OR, NAND and NOR are "
+    "linearly separable, so one layer is enough. XOR needs at least one "
+    "hidden layer."
+)
 model, meta = load_gate(gate_choice)
 
 st.subheader("Inputs")
