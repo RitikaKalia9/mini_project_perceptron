@@ -1,15 +1,16 @@
 # Binary Pattern Classifier using Perceptron
 
-A simple Streamlit application that demonstrates how a single-layer perceptron learns and predicts binary logic gates (AND and OR) using PyTorch.
+A simple Streamlit application that demonstrates how a single-layer perceptron learns and predicts binary logic gates (AND, OR, NAND and NOR) using PyTorch.
 
 ## Features
 
-- Train a perceptron for AND and OR gates
+- Train a perceptron for AND, OR, NAND and NOR gates
 - Save trained model weights and bias
 - Load trained models without retraining
 - Predict output for binary inputs
 - Display sigmoid probability
 - Show learned weights and bias
+- Explains why XOR is not supported (a single-layer perceptron can't learn XOR: it isn't linearly separable)
 - Visualize the forward pass using an animated neural network diagram
 
 ## Project Structure
@@ -19,8 +20,9 @@ A simple Streamlit application that demonstrates how a single-layer perceptron l
 ├── models/
 │   ├── perceptron_AND.pt
 │   ├── perceptron_OR.pt
-│   ├── perceptron_AND_meta.json
-│   └── perceptron_OR_meta.json
+│   ├── perceptron_NAND.pt
+│   ├── perceptron_NOR.pt
+│   └── perceptron_<GATE>_meta.json  (one per gate)
 ├── perceptron_train.py
 ├── streamlit_app.py
 ├── requirements.txt
@@ -47,7 +49,7 @@ pip install -r requirements.txt
 python perceptron_train.py
 ```
 
-This trains the perceptron for both AND and OR gates and saves the trained models in the `models` folder.
+This trains the perceptron for all four gates and saves the trained models in the `models` folder.
 
 ## Run the Application
 
