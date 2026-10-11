@@ -1,4 +1,4 @@
-"""Trains the AND / OR / NAND / NOR perceptrons and saves them in models/."""
+"""Trains the AND / OR / NAND / NOR / NOT perceptrons and saves them in models/."""
 
 import os
 import json
@@ -11,7 +11,9 @@ MODELS_DIR = "models"
 os.makedirs(MODELS_DIR, exist_ok=True)
 
 # ---------------------------------------------------------------------------
-# Truth tables for the gates this project supports (AND / OR / NAND / NOR).
+# Truth tables for the gates this project supports (AND / OR / NAND / NOR / NOT).
+# NOT is a one-input gate: it is written over the same 2-input table but its
+# output depends on x1 only (x2 is ignored), so its boundary is a vertical line.
 # XOR is deliberately left out: it is not linearly separable, so a
 # single-layer perceptron cannot learn it (see the note in the app).
 # Same 4-row datasets used in the lab, just organised in a dictionary so we
@@ -70,6 +72,20 @@ GATES = {
         "y": torch.tensor([
             [1.],
             [0.],
+            [0.],
+            [0.]
+        ]),
+    },
+    "NOT": {
+        "x": torch.tensor([
+            [0., 0.],
+            [0., 1.],
+            [1., 0.],
+            [1., 1.]
+        ]),
+        "y": torch.tensor([
+            [1.],
+            [1.],
             [0.],
             [0.]
         ]),
