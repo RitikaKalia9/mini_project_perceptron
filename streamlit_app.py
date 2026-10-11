@@ -3,7 +3,7 @@ Mini Project 12: Binary Pattern Classifier - Streamlit Interface
 
 Loads the perceptron models trained by perceptron_train.py (saved in the
 models/ folder as .pt weights + _meta.json files) and lets the user pick
-a gate (AND / OR / NAND / NOR), enter two binary inputs, and see the predicted class,
+a gate (AND / OR / NAND / NOR / NOT), enter two binary inputs, and see the predicted class,
 raw sigmoid probability, and the learned weights/bias.
 """
 
@@ -11,6 +11,10 @@ import os
 import json
 import torch
 import torch.nn as nn
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+import numpy as np
 import streamlit as st
 
 from perceptron_train import GATES, MODELS_DIR, train_and_save
@@ -27,7 +31,7 @@ def build_model():
 @st.cache_resource
 def load_gate(gate_name):
     """
-    Loads the trained weights + metadata for a given gate ('AND', 'OR', 'NAND' or 'NOR').
+    Loads the trained weights + metadata for a given gate ('AND', 'OR', 'NAND', 'NOR' or 'NOT').
     Cached so the model isn't reloaded from disk on every interaction.
     """
     weights_path = os.path.join(MODELS_DIR, f"perceptron_{gate_name}.pt")
@@ -52,6 +56,75 @@ def load_gate(gate_name):
 
     return model, meta
 
+
+
+# ----------------------------------------------------------------------
+# Linear-separability plots
+# ----------------------------------------------------------------------
+POINTS = [(0, 0), (0, 1), (1, 0), (1, 1)]
+ONE_COLOR, ZERO_COLOR = "#2ecc71", "#e74c3c"
+
+
+def _draw_points(ax, targets, highlight=None):
+    for (a, b), t in zip(POINTS, targets):
+        ax.scatter(a, b, s=420, color=ONE_COLOR if t == 1 else ZERO_COLOR,
+                   edgecolor="black", linewidth=1.5, zorder=5)
+        ax.annotate(str(int(t)), (a, b), ha="center", va="center",
+                    color="white", fontweight="bold", fontsize=12, zorder=6)
+    if highlight is not None:
+        ax.scatter(*highlight, s=1100, facecolor="none", edgecolor="#f39c12",
+                   linewidth=3, zorder=4, label="your input")
+    ax.set_xlim(-0.5, 1.5)
+    ax.set_ylim(-0.5, 1.5)
+    ax.set_xticks([0, 1])
+    ax.set_yticks([0, 1])
+    ax.set_xlabel("Input 1 (x1)")
+    ax.set_ylabel("Input 2 (x2)")
+    ax.set_aspect("equal")
+    ax.grid(alpha=0.25)
+
+
+def gate_boundary_figure(gate_name, w1, w2, bias, targets, highlight):
+    """Truth-table points + the line the perceptron learned (z = 0, i.e.
+    sigmoid output = 0.5). Green side = predicts 1, red side = predicts 0."""
+    fig, ax = plt.subplots(figsize=(4.8, 4.8))
+    gx, gy = np.meshgrid(np.linspace(-0.5, 1.5, 200), np.linspace(-0.5, 1.5, 200))
+    z = w1 * gx + w2 * gy + bias
+    ax.contourf(gx, gy, z, levels=[-1e9, 0, 1e9], colors=[ZERO_COLOR, ONE_COLOR],
+                alpha=0.13)
+    ax.contour(gx, gy, z, levels=[0], colors="black", linewidths=2.5)
+    _draw_points(ax, targets, highlight)
+    ax.set_title(f"{gate_name}: one straight line separates the 1s from the 0s",
+                 fontsize=10)
+    ax.text(0.02, 0.02, f"line: {w1:.2f}·x1 + {w2:.2f}·x2 + {bias:.2f} = 0",
+            transform=ax.transAxes, fontsize=8, bbox=dict(fc="white", alpha=0.8))
+    fig.tight_layout()
+    return fig
+
+
+def xor_figure():
+    """XOR truth table with three candidate lines - each gets some points wrong."""
+    targets = [0, 1, 1, 0]
+    fig, ax = plt.subplots(figsize=(4.8, 4.8))
+    candidates = [  # (a, b, c): predict 1 when a*x1 + b*x2 > c
+        (1, 1, 0.5, "x1 + x2 = 0.5"),
+        (1, 1, 1.5, "x1 + x2 = 1.5"),
+        (1, 0, 0.5, "x1 = 0.5"),
+    ]
+    xs = np.linspace(-0.5, 1.5, 50)
+    for (a, b, c, label), col in zip(candidates, ["#8e44ad", "#2980b9", "#d35400"]):
+        errs = sum(int((a * p + b * q > c) != bool(t))
+                   for (p, q), t in zip(POINTS, targets))
+        if b == 0:
+            ax.axvline(c / a, color=col, ls="--", lw=2, label=f"{label}  ({errs} wrong)")
+        else:
+            ax.plot(xs, (c - a * xs) / b, color=col, ls="--", lw=2,
+                    label=f"{label}  ({errs} wrong)")
+    _draw_points(ax, targets)
+    ax.set_title("XOR: every straight line gets at least 1 point wrong", fontsize=10)
+    ax.legend(loc="lower center", fontsize=8, bbox_to_anchor=(0.5, -0.42))
+    fig.tight_layout()
+    return fig
 
 
 # Helper function to generate the ANIMATED neural network SVG diagram
@@ -207,7 +280,38 @@ col1, col2 = st.columns(2)
 with col1:
     x1 = st.radio("Input 1", [0, 1], horizontal=True)
 with col2:
-    x2 = st.radio("Input 2", [0, 1], horizontal=True)
+    if gate_choice == "NOT":
+        x2 = 0
+        st.markdown("**Input 2**")
+        st.caption("Not used: NOT is a one-input gate, so only Input 1 matters.")
+    else:
+        x2 = st.radio("Input 2", [0, 1], horizontal=True)
+
+st.subheader("Why one layer is enough: linear separability")
+_t = GATES[gate_choice]["y"].flatten().tolist()
+_w1, _w2 = meta["weights"]
+st.pyplot(gate_boundary_figure(gate_choice, _w1, _w2, meta["bias"], _t, (x1, x2)))
+plt.close("all")
+st.caption(
+    "Each dot is one row of the truth table (green = output 1, red = output 0). "
+    "The black line is what the perceptron learned: where its weighted sum "
+    "z = 0, so the sigmoid gives exactly 0.5. Everything on the green side is "
+    "predicted 1 and everything on the red side is predicted 0. Because one "
+    "straight line puts every green dot on one side and every red dot on the "
+    "other, the gate is **linearly separable** and a single-layer perceptron "
+    "can learn it. The orange ring marks the input you selected."
+)
+
+with st.expander("What about XOR? See why one line can never work"):
+    st.pyplot(xor_figure())
+    plt.close("all")
+    st.markdown(
+        "XOR outputs 1 only when the inputs **differ**. The two green dots sit "
+        "on opposite corners, and so do the two red dots, so no single straight "
+        "line can put both greens on one side and both reds on the other. The "
+        "best any line can do is get 3 of the 4 rows right (75%). Fixing this "
+        "needs a **hidden layer**, which lets the network combine two lines."
+    )
 
 if st.button("Predict"):
     x_tensor = torch.tensor([[float(x1), float(x2)]])
